@@ -22,7 +22,7 @@ use crate::base::allocator::{Allocator, SameShapeAllocator, SameShapeC, SameShap
 use crate::base::constraint::{DimEq, SameNumberOfColumns, SameNumberOfRows, ShapeConstraint};
 use crate::base::dimension::{Dim, DimAdd, DimSum, IsNotStaticOne, U1, U2, U3};
 use crate::base::iter::{
-    ColumnIter, ColumnIterMut, MatrixIter, MatrixIterMut, RowIter, RowIterMut,
+    ColumnIter, ColumnIterMut, MNIter, MatrixIter, MatrixIterMut, RowIter, RowIterMut,
 };
 use crate::base::storage::{
     ContiguousStorage, ContiguousStorageMut, Owned, SameShapeStorage, Storage, StorageMut,
@@ -266,6 +266,22 @@ impl<N: Scalar, R: Dim, C: Dim, S: Storage<N, R, C>> Matrix<N, R, C, S> {
     #[inline]
     pub fn row_iter(&self) -> RowIter<N, R, C, S> {
         RowIter::new(self)
+    }
+
+    /// Iterate through the MxN submatrix.
+    ///
+    /// # Example
+    /// ```
+    /// # use nalgebra::Matrix2x3;
+    /// let mut a = Matrix2x3::new(1, 2, 3,
+    ///                            4, 5, 6);
+    /// for (i, row) in a.mn_iter().enumerate() {
+    ///     assert_eq!(row, a.row(i))
+    /// }
+    /// ```
+    #[inline]
+    pub fn mn_iter(&self) -> MNIter<N, R, C, S> {
+        MNIter::new(self)
     }
 
     /// Iterate through the columns of this matrix.

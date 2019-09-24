@@ -3,9 +3,11 @@
 use std::marker::PhantomData;
 use std::mem;
 
-use crate::base::dimension::{Dim, U1};
+use crate::base::dimension::{Dim, U1, U3};
 use crate::base::storage::{Storage, StorageMut};
-use crate::base::{Matrix, MatrixSlice, MatrixSliceMut, Scalar};
+use crate::base::{
+    Dynamic, Matrix, MatrixSlice, MatrixSlice3, MatrixSliceMN, MatrixSliceMut, Scalar,
+};
 
 macro_rules! iterator {
     (struct $Name:ident for $Storage:ident.$ptr: ident -> $Ptr:ty, $Ref:ty, $SRef: ty) => {
@@ -96,6 +98,73 @@ macro_rules! iterator {
 
 iterator!(struct MatrixIter for Storage.ptr -> *const N, &'a N, &'a S);
 iterator!(struct MatrixIterMut for StorageMut.ptr_mut -> *mut N, &'a mut N, &'a mut S);
+
+/*
+ *
+ * MNIter iterators.
+ *
+ */
+#[derive(Clone)]
+/// An iterator through the submatrices.
+pub struct MNIter<'a, N: Scalar, R: Dim, C: Dim, S: Storage<N, R, C>> {
+    mat: &'a Matrix<N, R, C, S>,
+    curr_x: usize,
+    curr_y: usize,
+}
+
+//todo, edge strategy
+impl<'a, N: Scalar, R: Dim, C: Dim, S: 'a + Storage<N, R, C>> MNIter<'a, N, R, C, S> {
+    pub(crate) fn new(mat: &'a Matrix<N, R, C, S>) -> Self {
+        MNIter {
+            mat,
+            curr_x: 0,
+            curr_y: 0,
+        }
+    }
+}
+
+//todo, genercise slice dimensions instead of hardcode 3x3
+impl<'a, N: Scalar, R: Dim, C: Dim, S: 'a + Storage<N, R, C>> Iterator for MNIter<'a, N, R, C, S> {
+    type Item = MatrixSlice3<'a, N, S::RStride, S::CStride>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.curr_x + 3 == self.mat.nrows() {
+            self.curr_x = 0;
+            self.curr_y += 1;
+        }
+
+        if (self.curr_y + 3) <= self.mat.ncols() {
+            let ret = self.mat.fixed_slice::<U3, U3>(self.curr_x, self.curr_y);
+            self.curr_x += 1;
+            Some(ret)
+        } else {
+            None
+        }
+    }
+
+    // #[inline]
+    // fn size_hint(&self) -> (usize, Option<usize>) {
+    //     (
+    //         self.mat.nrows() - self.curr,
+    //         Some(self.mat.nrows() - self.curr),
+    //     )
+    // }
+
+    // #[inline]
+    // fn count(self) -> usize {
+    //     self.mat.nrows() - self.curr
+    // }
+}
+
+// impl<'a, N: Scalar, R: Dim, C: Dim, S: 'a + Storage<N, R, C>> ExactSizeIterator
+//     for MNIter<'a, N, R, C, S>
+// {
+//     #[inline]
+//     fn len(&self) -> usize {
+//         self.mat.nrows() - self.curr
+//     }
+// }
 
 /*
  *
