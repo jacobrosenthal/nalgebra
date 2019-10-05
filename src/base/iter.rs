@@ -108,8 +108,8 @@ iterator!(struct MatrixIterMut for StorageMut.ptr_mut -> *mut N, &'a mut N, &'a 
 /// An iterator through the submatrices.
 pub struct MNIter<'a, N: Scalar, R: Dim, C: Dim, S: Storage<N, R, C>> {
     mat: &'a Matrix<N, R, C, S>,
-    curr_x: usize,
-    curr_y: usize,
+    irow: usize,
+    icol: usize,
 }
 
 //todo, edge strategy
@@ -117,26 +117,28 @@ impl<'a, N: Scalar, R: Dim, C: Dim, S: 'a + Storage<N, R, C>> MNIter<'a, N, R, C
     pub(crate) fn new(mat: &'a Matrix<N, R, C, S>) -> Self {
         MNIter {
             mat,
-            curr_x: 0,
-            curr_y: 0,
+            irow: 0,
+            icol: 0,
         }
     }
 }
 
 //todo, genercise slice dimensions instead of hardcode 3x3
+//note this is a columnar windower to match the from_iterator columnar requirement
 impl<'a, N: Scalar, R: Dim, C: Dim, S: 'a + Storage<N, R, C>> Iterator for MNIter<'a, N, R, C, S> {
     type Item = MatrixSlice3<'a, N, S::RStride, S::CStride>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.curr_x + 3 == self.mat.nrows() {
-            self.curr_x = 0;
-            self.curr_y += 1;
-        }
+        if (self.icol + 3) <= self.mat.ncols() {
+            let ret = self.mat.fixed_slice::<U3, U3>(self.irow, self.icol);
 
-        if (self.curr_y + 3) <= self.mat.ncols() {
-            let ret = self.mat.fixed_slice::<U3, U3>(self.curr_x, self.curr_y);
-            self.curr_x += 1;
+            self.irow += 1;
+            if self.irow + 3 > self.mat.nrows() {
+                self.irow = 0;
+                self.icol += 1;
+            }
+
             Some(ret)
         } else {
             None
