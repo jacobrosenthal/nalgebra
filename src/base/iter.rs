@@ -3,7 +3,7 @@
 use std::marker::PhantomData;
 use std::mem;
 
-use crate::base::dimension::{Dim, U1, U3};
+use crate::base::dimension::{Dim, DimName, U1, U3};
 use crate::base::storage::{Storage, StorageMut};
 use crate::base::{
     Dynamic, Matrix, MatrixSlice, MatrixSlice3, MatrixSliceMN, MatrixSliceMut, Scalar,
@@ -106,35 +106,43 @@ iterator!(struct MatrixIterMut for StorageMut.ptr_mut -> *mut N, &'a mut N, &'a 
  */
 #[derive(Clone)]
 /// An iterator through the submatrices.
-pub struct MNIter<'a, N: Scalar, R: Dim, C: Dim, S: Storage<N, R, C>> {
+pub struct MNIter<'a, R2: DimName, C2: DimName, N: Scalar, R: Dim, C: Dim, S: Storage<N, R, C>> {
     mat: &'a Matrix<N, R, C, S>,
     irow: usize,
     icol: usize,
+    _r2: PhantomData<R2>,
+    _c2: PhantomData<C2>,
 }
 
 //todo, edge strategy
-impl<'a, N: Scalar, R: Dim, C: Dim, S: 'a + Storage<N, R, C>> MNIter<'a, N, R, C, S> {
+impl<'a, R2: DimName, C2: DimName, N: Scalar, R: Dim, C: Dim, S: 'a + Storage<N, R, C>>
+    MNIter<'a, R2, C2, N, R, C, S>
+{
     pub(crate) fn new(mat: &'a Matrix<N, R, C, S>) -> Self {
         MNIter {
             mat,
             irow: 0,
             icol: 0,
+            _r2: PhantomData,
+            _c2: PhantomData,
         }
     }
 }
 
 //todo, genercise slice dimensions instead of hardcode 3x3
 //note this is a columnar windower to match the from_iterator columnar requirement
-impl<'a, N: Scalar, R: Dim, C: Dim, S: 'a + Storage<N, R, C>> Iterator for MNIter<'a, N, R, C, S> {
-    type Item = MatrixSlice3<'a, N, S::RStride, S::CStride>;
+impl<'a, R2: DimName, C2: DimName, N: Scalar, R: DimName, C: DimName, S: 'a + Storage<N, R, C>>
+    Iterator for MNIter<'a, R2, C2, N, R, C, S>
+{
+    type Item = MatrixSlice<'a, N, R2, C2, S::RStride, S::CStride>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if (self.icol + 3) <= self.mat.ncols() {
-            let ret = self.mat.fixed_slice::<U3, U3>(self.irow, self.icol);
+        if (self.icol + C2::dim()) <= self.mat.ncols() {
+            let ret = self.mat.fixed_slice::<R2, C2>(self.irow, self.icol);
 
             self.irow += 1;
-            if self.irow + 3 > self.mat.nrows() {
+            if self.irow + R2::dim() > self.mat.nrows() {
                 self.irow = 0;
                 self.icol += 1;
             }

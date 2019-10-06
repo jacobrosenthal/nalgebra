@@ -20,7 +20,7 @@ use alga::general::{ClosedAdd, ClosedMul, ClosedSub, ComplexField, Field, RealFi
 
 use crate::base::allocator::{Allocator, SameShapeAllocator, SameShapeC, SameShapeR};
 use crate::base::constraint::{DimEq, SameNumberOfColumns, SameNumberOfRows, ShapeConstraint};
-use crate::base::dimension::{Dim, DimAdd, DimSum, IsNotStaticOne, U1, U2, U3};
+use crate::base::dimension::{Dim, DimAdd, DimName, DimSum, IsNotStaticOne, U1, U2, U3};
 use crate::base::iter::{
     ColumnIter, ColumnIterMut, MNIter, MatrixIter, MatrixIterMut, RowIter, RowIterMut,
 };
@@ -280,8 +280,12 @@ impl<N: Scalar, R: Dim, C: Dim, S: Storage<N, R, C>> Matrix<N, R, C, S> {
     /// }
     /// ```
     #[inline]
-    pub fn mn_iter(&self) -> MNIter<N, R, C, S> {
-        MNIter::new(self)
+    pub fn mn_iter<R2, C2>(&self) -> MNIter<R2, C2, N, R, C, S>
+    where
+        R2: DimName,
+        C2: DimName,
+    {
+        MNIter::<R2, C2, N, R, C, S>::new(self)
     }
 
     /// Iterate through the columns of this matrix.
